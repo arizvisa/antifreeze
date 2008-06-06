@@ -4,7 +4,7 @@ import sys, os, time
 import BaseHTTPServer, CGIHTTPServer
 
 # class for handling the webserver (with cgi support)
-class web_interface(CGIHTTPServer.CGIHTTPRequestHandler):
+class requestHandler(BaseHTTPServer.BaseHTTPRequestHandler, CGIHTTPServer.CGIHTTPRequestHandler):
     mimelookup = dict([
         ('.html', 'text/html'),
         ('.js', 'text/html'),
@@ -16,7 +16,8 @@ class web_interface(CGIHTTPServer.CGIHTTPRequestHandler):
         (None, 'text/plain')
     ])
 	
-    def sendfile(self, path=None, errorcode=200, mime=None):
+    def sendfile(self, path, errorcode=200, mime=None):
+
         def getextension(pathname):
             if '.' in pathname:
                 ext = pathname[pathname.rfind('.')+1:]
@@ -25,15 +26,15 @@ class web_interface(CGIHTTPServer.CGIHTTPRequestHandler):
             return None
 
         try:
-            if path:
-                input = file(path, 'rb')
+            input = file(path, 'rb')
 
         except IOError, (x):            
-            self.send_response(404)
-            self.end_headers()
+            self.senddata("404 what the fuck", errorcode=404, mime='text/plain')
             return
 
         ext = getextension(path)
+        if ext not in self.mimelookup.keys():
+            ext = None
 
         self.senddata(input.read(), errorcode, self.mimelookup[ext])
 
@@ -48,50 +49,38 @@ class web_interface(CGIHTTPServer.CGIHTTPRequestHandler):
         self.wfile.write(data)
 	
     def do_GET(self):
-        pathname = os.curdir + self.path
-        pathname = pathname.replace('/', os.sep)    # normalize to something that looks like a filename
-
-        if os.path.isdir(pathname):
-            content_type = "text/html"
-
-            pathname = pathname.replace('/', os.sep)
+        curpath = '%s%s'% (os.curdir, self.path)
+        if os.path.isdir(curpath.replace('/', os.sep)):
             data = ""
-            for item in os.listdir(pathname):
-                data += '<a href="%s/%s">%s</a><br>' % (self.path, item, item)
+            for item in os.listdir(curpath):
+                webpath = "%s/%s"% (self.path, item)
+                filepath = curpath+os.sep+self.path.replace('/',os.sep)+item
+                data += '<a href="%s">%s</a><br/>\n' % (webpath, item)
+#                print webpath,filepath
+
             self.senddata(data, mime='text/html')
             return
 
-#        if pathname.endswith('.py'):
-#            self.send_error(501, "Can only POST to CGI scripts")
-#            return
-
-        self.sendfile(pathname)
-
-    '''
-    def do_POST(self):
-        pathname = os.curdir + self.path
-
-        if self.is_cgi():
+        if self.path.endswith('.py'):
             self.run_cgi()
-        else:
-            self.send_error(501, "Can only POST to CGI scripts %s [%s]"% (self.path, self.is_cgi()) )
-    '''
+            return
 
-			
+        curpath = "%s/%s"% (os.curdir, self.path)
+        self.sendfile(curpath)
+
 #############################################################################################################################
 if __name__ == '__main__':
 	server_class = BaseHTTPServer.HTTPServer
 	
 	# our cgi path
 	CGIHTTPServer.CGIHTTPRequestHandler.cgi_directories.append("/pyd")
-	print CGIHTTPServer.CGIHTTPRequestHandler.cgi_directories
 	
-	
-	httpd = server_class(('localhost', 80), web_interface)
+	httpd = server_class(('localhost', 80), requestHandler)
 	print time.asctime(), "Server starts - localhost:80"
 	
 	try:
 		httpd.serve_forever()
+
 	except KeyboardInterrupt: # XXX: doesnt work
 		print "Caught keyboard interrupt"
 		httpd.server_close()

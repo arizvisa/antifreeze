@@ -49,16 +49,17 @@ class requestHandler(BaseHTTPServer.BaseHTTPRequestHandler, CGIHTTPServer.CGIHTT
         self.wfile.write(data)
 	
     def do_GET(self):
-        curpath = '%s%s'% (os.curdir, self.path)
-        if os.path.isdir(curpath.replace('/', os.sep)):
-            data = ""
-            for item in os.listdir(curpath):
-                webpath = "%s/%s"% (self.path, item)
-                filepath = curpath+os.sep+self.path.replace('/',os.sep)+item
-                data += '<a href="%s">%s</a><br/>\n' % (webpath, item)
-#                print webpath,filepath
+        # check to see if we're a directory
+        local_path = os.getcwd() + self.path.replace('/', os.sep)
+        url_path = self.path[1:]
 
-            self.senddata(data, mime='text/html')
+        if os.path.isdir(local_path):
+            res = []
+            for fn in os.listdir(local_path):
+                s = '<a href="%s/%s">%s</a><br />\n' % (url_path, fn, fn)
+                res.append(s)
+            res = ''.join(res)
+            self.senddata(res, mime='text/html')
             return
 
         if self.path.endswith('.py'):

@@ -61,6 +61,32 @@ def navi(object):
 class navcode(navt):
     type = code
 
+    ## merged in from aaron's asm.py
+    def findByName(navObj, nodeName):
+        '''returns a code object, if it finds it'''
+        
+        ## top level object
+        if navObj.object.co_name == "?":
+            if navObj.object.co_filename == nodeName:
+                return navObj.object
+                
+        ## found somethin
+        elif navObj.object.co_name == nodeName:
+            return navObj.object
+        
+        # get downgraph
+        children = navObj.down()
+        
+        while children:
+            child = children.pop()
+            
+            if child.object.co_name == nodeName:
+                return child.object
+
+            children = child.down()
+
+        raise KeyError, '"%s" not found in %s'%( nodeName, repr(navObj) )
+
 function = type(eval("lambda:True"))
 class navfunc(navt):
     type = function

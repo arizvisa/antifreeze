@@ -158,7 +158,7 @@ class pStruct(pType):
 
             blah = repr(self[k])
             if (type(self[k]) == int) or (type(self[k]) == long):
-                fmt = "%%0%dx"% size
+                fmt = "%%0%dx"% (size*2)
                 hexnum = fmt% self[k]
                 blah = "0x%s (%d)"% (hexnum, self[k])
 

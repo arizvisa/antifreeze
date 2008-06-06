@@ -66,6 +66,8 @@ class requestHandler(BaseHTTPServer.BaseHTTPRequestHandler, CGIHTTPServer.CGIHTT
             self.run_cgi()
             return
 
+        # XXX: this shit still doesn't work
+        #      need to come up w/ test cases
         curpath = "%s/%s"% (os.curdir, self.path)
         self.sendfile(curpath)
 

@@ -16,13 +16,14 @@ PE = peepeelite.PE
 
 ################################################################################
 def inject_obj(modified, orig):
-    in_file = open(config.in_filename)
+    
+    in_file = open(config.in_filename, 'rb')
     pyd_data = in_file.read()
     in_file.close()
     
     assert(len(pyd_data) > 1)
     assert(orig in pyd_data)
-    
+   
     import re
     starts = [match.start() for match in re.finditer(re.escape(orig), pyd_data)]
     
@@ -37,20 +38,17 @@ def inject_obj(modified, orig):
         # now append the rest of phase_1.mf
         new_buf += pyd_data[offset+len(modified):]
         
-        #out_file = open(r'C:\Program Files\Disney\Disney Online\PiratesOnline\phase_1.mf', 'wb')
         out_file = open(config.out_filename, 'wb')
-        wrote = len(new_buf)
         out_file.write(new_buf)
+        wrote = len(new_buf)
         out_file.close()
         
-        #print "Operation completed successfully %d of %d, wrote %d bytes back to file" % (counter+1, len(starts), wrote)
+        print "Operation completed successfully %d of %d, wrote %d bytes back to file" % (counter+1, len(starts), wrote)
         counter += 1
         
-    
     if counter == 0:
         raise
         #print "Operation failed! No occurrences found!"
-
 
 ################################################################################
 def extract_objs(fname):
@@ -64,11 +62,6 @@ def extract_objs(fname):
         ]
     
     objs    = dict()
-    address = '11445588'
-    end     = '11449B95'
-    output  = 'code_dump'
-    base    = 'C:\code\PotC'
-    
     
     ## load executable
     executable = PE()
@@ -82,7 +75,6 @@ def extract_objs(fname):
     file.seek( frozenTableOffset )
     rec = frozenTable()
 
-    # XXX: go 'till end of obj table (dirrrty hack)
     while True:
         rec.deserialize(file.read(rec.size()))
         
@@ -110,6 +102,83 @@ def extract_objs(fname):
         file.seek(offset + rec.size())  # so we save and restore
 
     return objs
-    
-################################################################################
 
+if __name__ == '__main__':
+    fname = 'Phase1.pyd'
+
+    from frozenfind import lameGetFrozenTable       ## heh
+    class frozenTable(pStruct):
+        _fields_ = [
+            ('<L', 'Name'),
+            ('<L', 'Data'),
+            ('<L', 'Length')
+        ]
+
+    def getLookupTable(fname):
+        executable = PE()
+        executable.open(fname)
+        executable.read()
+        file = executable.file
+
+        frozenTableOffset = lameGetFrozenTable(fname)
+        
+        ## iterate through all records
+        file.seek( frozenTableOffset )
+        rec = frozenTable()
+
+        while True:
+            rec.deserialize(file.read(rec.size()))
+            
+            # make sure we didnt go past the end of the object table
+            if rec['Name'] == 0:
+                break
+            
+            offset = file.tell()    # we're manipulating this file type, out from underneath the PE object
+        
+            name = executable.getStringByRVA( executable.getRVAByVA(rec['Name']) )
+        
+            # dump the code objects themselves
+            recLen = abs(struct.unpack('l', struct.pack('L', int(rec['Length'])))[0] * -1)
+        
+            if recLen > 0 :
+                # pull out the data
+                data_ptr = executable.getOffsetByVA(rec['Data'])
+        
+                # deserialize it, store in our dictionary
+                table[name] = (data_ptr, recLen)
+        
+            # jump to next item
+            file.seek(offset + rec.size())  # so we save and restore
+
+        return table
+
+    class pydNavi(object):
+        lookup = None
+        file = None
+
+        def __init__(self, fname, table):
+            super(pydNavi, self).__init__()
+            self.lookup = table
+            self.file = file(fname, 'rb')
+
+        def __getitem__(self, key):
+            offset,length = self.lookup[key]
+
+            self.file.seek(offset)
+            return marshal.loads( self.file.read(length) )
+
+        def __setitem__(self, key, value):
+            offset,length = self.lookup[key]
+            res = marshal.dumps(value)
+
+            assert len(res) <= length
+
+            self.file.seek(offset)
+            self.file.write(res)
+
+        def keys(self):
+            return self.lookup.keys()
+
+    print fname
+    res = getLookupTable(fname)
+    x = pydNavi(fname, res)

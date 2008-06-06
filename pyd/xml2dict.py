@@ -1,105 +1,96 @@
-#!/usr/local/bin/python25
-# pulled from http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/522991
-# because that other guy sucks at recursive functions
-# fixed the 3-space indent issue
+from xml.dom.minidom import parseString
 
-def list_to_xml(name, l, stream):
-     for d in l:
-          dict_to_xml(d, name, stream)
+"""
+from xml_to_dict import xml_to_dict
 
-def dict_to_xml(d, root_node_name, stream):
-    """ Transform a dict into a XML, writing to a stream """
-    stream.write('\n<' + root_node_name)
-    attributes = StringIO() 
-    nodes = StringIO()
-    for item in d.items():
-        key, value = item
-        if isinstance(value, dict):
-            dict_to_xml(value, key, nodes)
-        elif isinstance(value, list):
-            list_to_xml(key, value, nodes)
-        elif isinstance(value, str) or isinstance(value, unicode):
-            attributes.write('\n  %s="%s" ' % (key, value))
+x = xml_to_dict("/Users/pedram/Desktop/test.xml")['advisory']
+print x['ids']['internal'].value
+
+for vendor in x['affected_vendors']:
+    print vendor['name'].value, vendor['name'].ATTRIBUTES["link"]
+"""
+
+class _node_not_text:
+    pass
+
+class _xml_to_dict_node:
+    def __init__ (self, node, text):
+        self.value      = text
+        self.ATTRIBUTES = {}
+        
+        for k, v in node.attributes.items():
+            self.ATTRIBUTES[k] = v
+
+    def __str__ (self):
+        return self.value
+
+def _get_text_from_node (node):
+    t = ""
+
+    for n in node.childNodes:
+        if n.nodeType in [n.TEXT_NODE, n.CDATA_SECTION_NODE]:
+            t += n.nodeValue
         else:
-            raise TypeError('sorry, we support only dicts, lists and strings')
+            raise _node_not_text
 
-    stream.write(attributes.getvalue())
-    nodes_str = nodes.getvalue()
-    if len(nodes_str) == 0:
-        stream.write('/>')
-    else:
-        stream.write('>')
-        stream.write(nodes_str)
-        stream.write('\n</%s>' % root_node_name)
+    return t
 
-def dict_from_xml(xml):
-    """ Load a dict from a XML string """
+def _node_to_dict (node):
+    dic = {} 
 
-    def list_to_dict(l, ignore_root = True):
-        """ Convert our internal format list to a dict. We need this
-             because we use a list as a intermediate format during xml load """
-        root_dict = {}
-        inside_dict = {}
-        # index 0: node name
-        # index 1: attributes list
-        # index 2: children node list
-        root_dict[l[0]] = inside_dict
-        inside_dict.update(l[1])
-        # if it's a node containing lot's of nodes with same name,
-        # like <list><item/><item/><item/><item/><item/></list>
-        for x in l[2]:
-            d = list_to_dict(x, False)
-            for k, v in d.iteritems():
-                if not inside_dict.has_key(k):
-                    inside_dict[k] = []
-                    
-                inside_dict[k].append(v)
-
-        ret = root_dict
-        if ignore_root:
-            ret = root_dict.values()[0]
-            
-        return ret
-    
-    class M:
-        """ This is our expat event sink """
-        def __init__(self):
-            self.lists_stack = []
-            self.current_list = None
-        def start_element(self, name, attrs):
+    for n in node.childNodes:
+        if n.nodeType != n.ELEMENT_NODE:
+            continue
+                
+        if n.getAttribute("list").lower() == "true":
             l = []
-            # root node?
-            if self.current_list is None:
-                self.current_list = [name, attrs, l]
-            else:
-                self.current_list.append([name, attrs, l])
+            for c in n.childNodes:
+                if c.nodeType != n.ELEMENT_NODE:
+                    continue
 
-            self.lists_stack.append(self.current_list)
-            self.current_list = l
-            pass
-             
-        def end_element(self, name):
-            self.current_list = self.lists_stack.pop()
-        def char_data(self, data):
-            # We don't write char_data to file (beyond \n and spaces).
-            # What to do? Raise?
-            pass
+                try:
+                    l.append(_xml_to_dict_node(c, _get_text_from_node(c)))
+                except _node_not_text:
+                    l.append(_node_to_dict(c))
 
-if __name__ == '__main__':
-     s = """<?xml version="1.0" encoding="utf-8" ?>
-     <result>
-          <count n="1">10</count>
-          <data><id>491691</id><name>test</name></data>
-          <data><id>491692</id><name>test2</name></data>
-          <data><id>503938</id><name>hello, world</name></data>
-     </result>"""
+                dic.update({n.nodeName:l})
 
-     r = fromstring(s)
-     import pprint
-     pprint.pprint(r)
+            continue
 
-     print r.result.count.value
-     print r.result.count.n
+        try:
+            text = _get_text_from_node(n)
+        except _node_not_text:
+            dic.update({n.nodeName:_node_to_dict(n)})
+            continue
 
-     for data in r.result.data:
-          print data.id, data.name 
+        dic.update({n.nodeName:_xml_to_dict_node(n, text)})
+        continue
+
+    return dic
+
+def xml_to_dict (input):
+    '''
+    @author: pedram
+    '''
+
+    # <arizvisa comment="lazily skip past xml version tag">
+    if input.startswith('<?'):
+        input = input[input.index('?>') + 2: ]
+    # </arizvisa>
+    return _node_to_dict(parseString(input))
+
+if __name__ == "__main__":
+    s = '''<?xml version="1.0"?><code><name>direct.controls</name><asm><![CDATA[    load_const       0                                   # -> 'None'
+    return_value    ]]></asm>undefined<path>PYD->direct.controls</path></code>
+    '''
+    x = xml_to_dict(s)
+    
+    for vendor in x['affected_vendors']:
+        print vendor["name"]
+        
+        print vendor.get("response", "no response")
+        
+        for product in vendor.get("products", []):
+            print "\t", product, product.ATTRIBUTES["link"]
+    
+    print x['details']

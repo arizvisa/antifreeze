@@ -56,10 +56,10 @@ def pretty_dis(obj, address=0):
             arg = oparg
 
         if comment:
-            comment = '# -> %s'% repr(comment)
+            comment = '# %s'% comment
 
-        # FIXME: hardcoded length is 32. (why would you need such huge names for a label anyways)
-        res.append('    %s %s    %s'% (mnem.ljust(16), str(arg).ljust(32), comment))
+        # FIXME: hardcoded length is 12. (why would you need such huge names for a label anyways)
+        res.append('    %s %s    %s'% (mnem.ljust(0x10), str(arg).ljust(0xc), comment))
 
         if ofs not in labels.keys():
             if opnum in opcode.hasjrel or mnem.startswith('store') or mnem.startswith('call'): 

@@ -2,7 +2,8 @@
 import sys
 sys.path.append('./lib')
 
-in_filename = '/work/antifreeze/pyd/Phase1.pyd'
-out_filename = '/work/antifreeze/pyd/Phase1.new.pyd'
+in_filename = r'C:\Program Files\Disney\Disney Online\PiratesOnline\Phase1.pyd'
+out_filename = r'C:\Program Files\Disney\Disney Online\PiratesOnline\Phase1.pyd'
 
-#debug = True
+#in_filename = r'C:\Program Files\Disney\Disney Online\PiratesOnline\phase_1.mf'
+#out_filename = r'C:\Program Files\Disney\Disney Online\PiratesOnline\phase_1.mf'

@@ -5,7 +5,7 @@ Ext.onReady(function() {
     /////////////////////////////////////////////////////////////////////////////////
 
     var codeStore;
-    var coConstsString;
+    var coConstsString = '';
     var vanillaFieldSet;
 
 
@@ -52,7 +52,6 @@ Ext.onReady(function() {
     var sortedTree = new Ext.tree.TreeSorter(tree, {});
     sortedTree.doSort(tree.getRootNode());
 
-    // tree.expandAll();
 
     /////////////////////////////////////////////////////////////////////////////////
     // Dissassembly Window
@@ -74,10 +73,19 @@ Ext.onReady(function() {
         xmlData += '<code>';
         xmlData += '<name>' + nodeName + '</name>';
         xmlData += '<asm><![CDATA[' + toAssemble + ']]></asm>';
-        xmlData += coConstsString;
+        
+        if (coConstsString != '') {
+            xmlData += coConstsString;
+        } else {
+            xmlData += "<co_consts></co_consts>";
+        }
+        
+        
         xmlData += '<path>' + path + '</path>';
         xmlData += '</code>';
 
+        alert(xmlData);
+        
         document.write('<!--' + xmlData + '-->');
 
         // need to send toAssemble to asm.py
@@ -124,6 +132,7 @@ Ext.onReady(function() {
         {name: 'co_argcount'},
         {name: 'co_cellvars'},
         {name: 'co_code'},
+        {name: 'co_consts_map'},
         {name: 'co_consts'},
         {name: 'co_filename'},
         {name: 'co_firstlineno'},
@@ -249,7 +258,7 @@ Ext.onReady(function() {
         labelWidth:     70,
         frame:          true,
         //title:          'Code Properties Form',
-        bodyStyle:      'padding:5px 5px 0',
+        bodyStyle:      'padding:5px 5px 0;overflow:auto',
         //autoWidth:      true,
         defaultType:    'textfield',
         items:          [codePropertiesCombo]
@@ -303,6 +312,7 @@ Ext.onReady(function() {
                 split:          true,
                 width:          450,        // REQUIRED! must specify width
                 collapsible:    false,
+                autoScroll:     true,
                 items:          formPanel
             },{
                 region:         'south',
@@ -325,7 +335,7 @@ Ext.onReady(function() {
 
     // - is the height of the (frame_borders + menu_graphics + rest_of_crap)
     centerEditor.setSize('100%', westHeight-53);
-    formPanel.setSize('100%', westHeight-14);
+    formPanel.setSize('100%', westHeight-27);
 
 
     /////////////////////////////////////////////////////////////////////////////////
@@ -448,55 +458,91 @@ Ext.onReady(function() {
         if (propName == "co_consts") {
 
             // grab the xml data record we want
-            var coConsts = codeStore.getAt(0).get('co_consts');
+            var coConstsStr    = codeStore.getAt(0).get('co_consts');
+            var coConstsMap    = codeStore.getAt(0).get('co_consts_map');
 
-            var tokens = coConsts.split(",");
+            coConstsMap = coConstsMap.split(",");
+    
+            var offset = 0;
+            for (var i=0; i < coConstsMap.length; i++) {
 
-            // redraw
-            formPanel.doLayout();
-
-            var i = 0;
-            for (i; i < tokens.length-1; i++) {
-
-                var ident     = tokens[i].substr(0, 4);
-                var tokenData = tokens[i].substring(4, tokens[i].length);
+                var ident     = coConstsMap[i].substr(0, 4);
+                var constLen  = parseInt(coConstsMap[i].substr(4, coConstsMap[i].length));
+                var constData = coConstsStr.substr(offset, constLen);
+                offset = offset + constLen;
 
                 // String
-                if (ident == "STR:") {
+                if (ident == "str:") {
                     codePropertiesFieldSet.add(new Ext.form.TextField({
                             fieldLabel: 'Index ' + i, 
-                            emptyText:  tokenData, 
-                            growMin:    200,
-                            width:      200,
+                            emptyText:  constData, 
+                            width:      250,
+                            minGrow:    250,
                             grow:       true
                         }));
                 }
-
+                // Integer
+                else if (ident == "int:") {
+                    codePropertiesFieldSet.add(new Ext.form.TextField({
+                            fieldLabel: 'Index ' + i,
+                            emptyText:  constData,
+                            width:      200,
+                            growMin:    200,
+                            grow:       true
+                        }));
+                }
+                // List
+                else if (ident == "lst:") {
+                    codePropertiesFieldSet.add(new Ext.form.TextField({
+                            fieldLabel: 'Index ' + i,
+                            width:      300,
+                            growMin:    300,
+                            grow:       true,
+                            emptyText: constData
+                        }));
+                }
+                // Tupple
+                else if (ident == "tpl:") {
+                    codePropertiesFieldSet.add(new Ext.form.TextField({
+                            fieldLabel: 'Index ' + i,
+                            width:      250,
+                            growMin:    250,
+                            grow:       true,
+                            emptyText: constData
+                        }));
+                }
+                // Float
+                else if (ident == "flt:") {
+                    codePropertiesFieldSet.add(new Ext.form.TextField({
+                            fieldLabel: 'Index ' + i,
+                            width:      200,
+                            growMin:    200,
+                            grow:       true,
+                            emptyText: constData
+                        }));
+                }
+                // Code
+                else if (ident == "cod:") {
+                    codePropertiesFieldSet.add(new Ext.form.TextField({
+                            fieldLabel: 'Index ' + i,
+                            width:      150,
+                            disabled:   true,
+                            emptyText: constData
+                        }));
+                }                
                 // None
-                else if (ident == "NON:") {
+                else if (ident == "non:") {
                     codePropertiesFieldSet.add(new Ext.form.TextField({
                             fieldLabel: 'Index ' + i,
                             width:      100,
                             disabled:   true,
                             emptyText:  'None'
                         }));
-                }
-
-                // Integer
-                else if (ident == "INT:") {
-                    codePropertiesFieldSet.add(new Ext.form.TextField({
-                            fieldLabel: 'Index ' + i,
-                            emptyText:  tokenData,
-                            growMin:    200,
-                            width:      200,
-                            grow:       true
-                        }));
-                
                 // else
                 } else {
                     codePropertiesFieldSet.add(new Ext.form.TextField({
                             fieldLabel: 'Index ' + i,
-                            emptyText:  tokenData,
+                            emptyText:  constData,
                             disabled:   true,
                             width:      100,
                             grow:       true

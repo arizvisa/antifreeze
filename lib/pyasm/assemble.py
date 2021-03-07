@@ -3,6 +3,8 @@ import struct
 from opcode import *
 from exceptions import SyntaxError
 
+# def_op('INVALID', 255)    # XXX: just in case someone wants an invalid opcode
+
 class ParseError(SyntaxError): pass
 
 def evaluate(value):

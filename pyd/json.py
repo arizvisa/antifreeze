@@ -13,14 +13,15 @@ import extract_code
 form = cgi.FieldStorage()
 
 # get code objects
-objs = extract_code.extract_objs(config.in_filename)
+pyd = extract_code.pydOpen(config.in_filename)
 
 # create java array data
 # must print a newline before the actual data to end the headers
 print
 print "["
 
-for obj_name, obj_data in objs.iteritems():
+for obj_name in pyd.keys():
+    obj_data = pyd[obj_name]
     nav_obj = navi(obj_data)
     
     data = build_js_tree_input(nav_obj)

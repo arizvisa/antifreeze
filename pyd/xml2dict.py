@@ -40,7 +40,8 @@ nodelookup = {
 
 def xml2dict(data):
     node = minidom.parseString(data)
-    return parseNode(node)
+    fn = nodelookup[ node.nodeType ]
+    return fn(node)
 
 if __name__ == "__main__":
     data = '''<?xml version="1.0"?><code><name>direct.controls</name><asm><![CDATA[    load_const       0                                   # -> 'None'

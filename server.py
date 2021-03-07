@@ -1,6 +1,7 @@
 #!c:\python\python.exe
 
 import sys, os, time
+sys.path = ['./'] + sys.path
 import BaseHTTPServer, CGIHTTPServer
 
 # class for handling the webserver (with cgi support)
@@ -12,6 +13,7 @@ class requestHandler(BaseHTTPServer.BaseHTTPRequestHandler, CGIHTTPServer.CGIHTT
         ('.gif', 'image/gif'),
         ('.png', 'image/png'),
         ('.css', 'text/css'),
+        ('.xml', 'text/xml'),
 #        (None, 'application/binary')
         (None, 'text/plain')
     ])
@@ -28,7 +30,7 @@ class requestHandler(BaseHTTPServer.BaseHTTPRequestHandler, CGIHTTPServer.CGIHTT
         try:
             input = file(path, 'rb')
 
-        except IOError, (x):            
+        except IOError, (x):         
             self.senddata("404 what the fuck", errorcode=404, mime='text/plain')
             return
 
@@ -66,10 +68,7 @@ class requestHandler(BaseHTTPServer.BaseHTTPRequestHandler, CGIHTTPServer.CGIHTT
             self.run_cgi()
             return
 
-        # XXX: this shit still doesn't work
-        #      need to come up w/ test cases
-        curpath = "%s/%s"% (os.curdir, self.path)
-        self.sendfile(curpath)
+        self.sendfile(local_path)
 
 #############################################################################################################################
 if __name__ == '__main__':

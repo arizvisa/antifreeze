@@ -6,7 +6,7 @@ import cgi
 import cgitb; cgitb.enable()
 
 import marshal
-from xml2dict import xml_to_dict
+from xml2dict import xml2dict
 
 import pyasm
 import codefu
@@ -168,7 +168,7 @@ xmlStr = '''<?xml version="1.0"?><code><name>direct.directtools.DirectGlobals</n
     return_value    ]]></asm>undefined<path>PYD->direct.directtools.DirectGlobals</path></code>
     '''
 #
-xmlData = xml_to_dict(xmlStr)
+xmlData = xml2dict(xmlStr)
 
 # the disassembly to assemble
 toAsm = str(xmlData[u'code'][u'asm'])

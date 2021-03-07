@@ -37,16 +37,46 @@ def pfactory(**kwds):
 
     return res
 
+class reglist(object):
+    registers = None
+    size = 0
+
+    def __init__(self, registers):
+        self.registers = registers
+
+    def lookupByName(self, name):
+        assert name in self.registers
+        return self.registers.index(name)
+
+    def lookupByIndex(self, index):
+        assert index in list(range(len(self.registers)))
+        return self.registers[index]
+
 class reglookup:
-    'lookup table for identifying reg'
-    r8 = 'al cl dl bl ah ch dh bh'.split(' ')
-    r16 = 'ax cx dx bx sp bp si di'.split(' ')
-    r32 = 'eax ecx edx ebx esp ebp esi edi'.split(' ')
-    mm = 'mm0 mm1 mm2 mm3 mm4 mm5 mm6 mm7'.split(' ')
-    xmm = 'xmm0 xmm1 xmm2 xmm3 xmm4 xmm5 xmm6 xmm7'.split(' ')
-    sreg = 'es cs ss ds fs gs res1 res2'.split(' ')
-    cr = 'cr0 cr1 cr2 cr3 cr4 cr5 cr6 cr7'.split(' ')
-    dr = 'dr0 dr1 dr2 dr3 dr4 dr5 dr6 dr7'.split(' ')
+    'lookup table for identifying registers'
+    r8 = reglist( 'al cl dl bl ah ch dh bh'.split(' ') )
+    r16 = reglist( 'ax cx dx bx sp bp si di'.split(' ') )
+    r32 = reglist( 'eax ecx edx ebx esp ebp esi edi'.split(' ') )
+    mm = reglist( 'mm0 mm1 mm2 mm3 mm4 mm5 mm6 mm7'.split(' ') )
+    xmm = reglist( 'xmm0 xmm1 xmm2 xmm3 xmm4 xmm5 xmm6 xmm7'.split(' ') )
+    sreg = reglist( 'es cs ss ds fs gs res1 res2'.split(' ') )
+    cr = reglist( 'cr0 cr1 cr2 cr3 cr4 cr5 cr6 cr7'.split(' ') )
+    dr = reglist( 'dr0 dr1 dr2 dr3 dr4 dr5 dr6 dr7'.split(' ') )
+
+    lookup = {
+        'r8' : 1,
+        'r16' : 2,
+        'r32' : 4
+    }
+
+    @staticmethod
+    def getByName(name):
+        res = dict([ (k, getattr(modrmlookup, k)) for k in dir(reg) if type(getattr(modrmlookup, k)) == reglist])
+        for k,v in res.items():
+            if name in v.registers:
+                return k, v.lookupByName(name)
+
+        raise ValueError("Unknown register %s"% name)
 
 opencoding = dict([
     ( 'A', pfactory(imm=True) ),

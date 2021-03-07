@@ -1,96 +1,78 @@
-from xml.dom.minidom import parseString
+from xml.dom import minidom 
+Node = minidom.Node
 
-"""
-from xml_to_dict import xml_to_dict
-
-x = xml_to_dict("/Users/pedram/Desktop/test.xml")['advisory']
-print x['ids']['internal'].value
-
-for vendor in x['affected_vendors']:
-    print vendor['name'].value, vendor['name'].ATTRIBUTES["link"]
-"""
-
-class _node_not_text:
-    pass
-
-class _xml_to_dict_node:
-    def __init__ (self, node, text):
-        self.value      = text
-        self.ATTRIBUTES = {}
-        
-        for k, v in node.attributes.items():
-            self.ATTRIBUTES[k] = v
-
-    def __str__ (self):
-        return self.value
-
-def _get_text_from_node (node):
-    t = ""
+def parseNode(node):
+    res = {}
+    if node.attributes:
+        res = dict( node.attributes.items() )
 
     for n in node.childNodes:
-        if n.nodeType in [n.TEXT_NODE, n.CDATA_SECTION_NODE]:
-            t += n.nodeValue
-        else:
-            raise _node_not_text
+        fn = nodelookup[n.nodeType]
+        name = n.nodeName
 
-    return t
+        ## XXX: hack to join anything that's considered content
+        if name.startswith('#'):
+            name = None
 
-def _node_to_dict (node):
-    dic = {} 
-
-    for n in node.childNodes:
-        if n.nodeType != n.ELEMENT_NODE:
-            continue
-                
-        if n.getAttribute("list").lower() == "true":
-            l = []
-            for c in n.childNodes:
-                if c.nodeType != n.ELEMENT_NODE:
-                    continue
-
-                try:
-                    l.append(_xml_to_dict_node(c, _get_text_from_node(c)))
-                except _node_not_text:
-                    l.append(_node_to_dict(c))
-
-                dic.update({n.nodeName:l})
-
+        if name in res.keys():
+            if not isinstance(res[name], list):
+                res[name] = [ res[name] ]
+            res[name].append(fn(n))
             continue
 
-        try:
-            text = _get_text_from_node(n)
-        except _node_not_text:
-            dic.update({n.nodeName:_node_to_dict(n)})
-            continue
+        res[name] = fn(n)
+    return res
 
-        dic.update({n.nodeName:_xml_to_dict_node(n, text)})
-        continue
+def getData(node):
+    return node.data
 
-    return dic
+# directions to parse each node
+nodelookup = {
+    # has children
+    Node.DOCUMENT_NODE : parseNode,
+    Node.ELEMENT_NODE : parseNode,
+    Node.DOCUMENT_NODE : parseNode,
 
-def xml_to_dict (input):
-    '''
-    @author: pedram
-    '''
+    # returns constants
+    Node.CDATA_SECTION_NODE : getData,
+    Node.TEXT_NODE : getData
+}
 
-    # <arizvisa comment="lazily skip past xml version tag">
-    if input.startswith('<?'):
-        input = input[input.index('?>') + 2: ]
-    # </arizvisa>
-    return _node_to_dict(parseString(input))
+def xml2dict(data):
+    node = minidom.parseString(data)
+    return parseNode(node)
 
 if __name__ == "__main__":
-    s = '''<?xml version="1.0"?><code><name>direct.controls</name><asm><![CDATA[    load_const       0                                   # -> 'None'
+    data = '''<?xml version="1.0"?><code><name>direct.controls</name><asm><![CDATA[    load_const       0                                   # -> 'None'
     return_value    ]]></asm>undefined<path>PYD->direct.controls</path></code>
     '''
-    x = xml_to_dict(s)
-    
-    for vendor in x['affected_vendors']:
-        print vendor["name"]
-        
-        print vendor.get("response", "no response")
-        
-        for product in vendor.get("products", []):
-            print "\t", product, product.ATTRIBUTES["link"]
-    
-    print x['details']
+    res = xml2dict(data)
+    top = res[u'code']
+
+#    print top
+#    print top[u'name']
+    print repr(top[u'name'][None])
+
+#    print top[u'asm']
+    print repr(top[u'asm'][None])
+
+#    print top[u'path']
+    print repr(top[u'path'][None])
+
+    print '-'*7
+    # thank you thunder for informing me about the existence of this module
+    from pprint import pprint
+    data = '''<?xml version="1.0"?>
+            <code>
+                <name>DynamicHuman</name>
+                <asm><![CDATA[cdata blahbala]]></asm>
+                <co_consts>
+                    <value index="22"><![CDATA[9]]></value>
+                    <value index="23"><![CDATA[9]]></value>
+                    <value index="24"><![CDATA[9]]></value>
+                </co_consts>
+                <path>PYD->pirates.pirate.DynamicHuman->DynamicHuman</path>
+            </code>
+    '''
+    res = xml2dict(data)
+    pprint(res)
